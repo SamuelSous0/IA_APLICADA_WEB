@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Classificador de Imagens com IA</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --surface: #1e293b;
+      --surface-2: #0b1220;
+      --border: #334155;
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --primary: #3b82f6;
+      --primary-hover: #2563eb;
+      --success: #22c55e;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --radius: 14px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: linear-gradient(160deg, #0f172a 0%, #111827 100%);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 24px 16px 48px;
+      line-height: 1.5;
+    }
+
+    .container {
+      max-width: 720px;
+      margin: 0 auto;
+      display: grid;
+      gap: 20px;
+    }
+
+    header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 0.92rem;
+      margin-top: 2px;
+    }
+
+    .status-bar {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 8px 12px;
+      border-radius: 999px;
+      font-size: 0.85rem;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--muted);
+      flex-shrink: 0;
+    }
+
+    .dot.online { background: var(--success); box-shadow: 0 0 8px rgba(34, 197, 94, 0.6); }
+    .dot.loading { background: var(--warning); animation: pulse 1.2s infinite; }
+    .dot.offline { background: var(--danger); }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.35; }
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      display: grid;
+      gap: 16px;
+    }
+
+    .tabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      background: var(--surface-2);
+      padding: 6px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+    }
+
+    .tab-btn {
+      background: transparent;
+      color: var(--muted);
+      border: none;
+      padding: 10px 12px;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .tab-btn.active {
+      background: var(--primary);
+      color: #fff;
+    }
+
+    .dropzone {
+      border: 2px dashed var(--border);
+      border-radius: 12px;
+      padding: 32px 16px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+      background: rgba(15, 23, 42, 0.45);
+    }
+
+    .dropzone:hover,
+    .dropzone.dragover {
+      border-color: var(--primary);
+      background: rgba(59, 130, 246, 0.08);
+    }
+
+    .dropzone p {
+      color: var(--muted);
+      font-size: 0.92rem;
+      margin-top: 6px;
+    }
+
+    .camera-box {
+      display: grid;
+      gap: 12px;
+    }
+
+    video,
+    .preview-img {
+      width: 100%;
+      max-height: 360px;
+      object-fit: contain;
+      background: #020617;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    button {
+      font-family: inherit;
+    }
+
+    .btn {
+      padding: 10px 16px;
+      border-radius: 10px;
+      border: 1px solid transparent;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s, opacity 0.15s, border-color 0.15s;
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: #fff;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: var(--primary-hover);
+    }
+
+    .btn-secondary {
+      background: transparent;
+      color: var(--text);
+      border-color: var(--border);
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    .btn-small {
+      padding: 4px 10px;
+      font-size: 0.8rem;
+      border-radius: 8px;
+    }
+
+    .preview-section {
+      display: grid;
+      gap: 12px;
+      padding-top: 8px;
+      border-top: 1px solid var(--border);
+    }
+
+    .preview-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 0.9rem;
+      color: var(--muted);
+    }
+
+    .alert {
+      padding: 12px 14px;
+      border-radius: 10px;
+      font-size: 0.92rem;
+      border: 1px solid transparent;
+    }
+
+    .alert-error {
+      background: rgba(239, 68, 68, 0.12);
+      border-color: rgba(239, 68, 68, 0.4);
+      color: #fecaca;
+    }
+
+    .alert-info {
+      background: rgba(59, 130, 246, 0.12);
+      border-color: rgba(59, 130, 246, 0.35);
+      color: #bfdbfe;
+    }
+
+    .result-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 12px;
+    }
+
+    .metric {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+    }
+
+    .metric-label {
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--muted);
+    }
+
+    .metric-value {
+      font-size: 1.15rem;
+      font-weight: 700;
+      margin-top: 4px;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-size: 0.88rem;
+      font-weight: 700;
+    }
+
+    .badge-piramide { background: rgba(59, 130, 246, 0.2); color: #93c5fd; }
+    .badge-cubo { background: rgba(34, 197, 94, 0.2); color: #86efac; }
+    .badge-unknown { background: rgba(245, 158, 11, 0.2); color: #fde68a; }
+
+    .confidence-bar {
+      width: 100%;
+      height: 8px;
+      background: #1e293b;
+      border-radius: 999px;
+      overflow: hidden;
+      margin-top: 8px;
+    }
+
+    .confidence-fill {
+      height: 100%;
+      background: var(--primary);
+      width: 0%;
+      transition: width 0.35s ease;
+    }
+
+    pre {
+      background: #020617;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      color: #cbd5e1;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <header>
+      <div>
+        <h1>Classificador de Imagens (IA)</h1>
+        <p class="subtitle">Tire uma foto ou envie um arquivo JPEG/PNG para classificação.</p>
+      </div>
+      <div class="status-bar">
+        <span id="statusDot" class="dot"></span>
+        <span id="statusText">Verificando serviço...</span>
+        <button id="btnCheckHealth" class="btn btn-secondary btn-small" type="button">Testar</button>
+      </div>
+    </header>
+
+    <section class="card">
+      <div class="tabs" role="tablist">
+        <button id="tabUpload" class="tab-btn active" type="button" role="tab" aria-selected="true">
+          Enviar foto
+        </button>
+        <button id="tabCamera" class="tab-btn" type="button" role="tab" aria-selected="false">
+          Tirar foto
+        </button>
+      </div>
+
+      <!-- Modo Upload -->
+      <div id="uploadPanel">
+        <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-label="Selecionar imagem">
+          <strong>Clique para escolher uma foto</strong>
+          <p>ou arraste e solte aqui (JPEG ou PNG)</p>
+        </div>
+        <input id="fileInput" class="hidden" type="file" accept="image/jpeg,image/png" />
+      </div>
+
+      <!-- Modo Câmera -->
+      <div id="cameraPanel" class="camera-box hidden">
+        <video id="video" autoplay playsinline muted class="hidden"></video>
+        <canvas id="canvas" class="hidden"></canvas>
+        <div class="actions">
+          <button id="btnStartCamera" class="btn btn-primary" type="button">Abrir câmera</button>
+          <button id="btnCapture" class="btn btn-primary hidden" type="button">Capturar foto</button>
+          <button id="btnStopCamera" class="btn btn-secondary hidden" type="button">Fechar câmera</button>
+        </div>
+      </div>
+
+      <!-- Preview + Envio -->
+      <div id="previewSection" class="preview-section hidden">
+        <div class="preview-header">
+          <span id="previewName">Imagem selecionada</span>
+          <button id="btnClear" class="btn btn-secondary btn-small" type="button">Limpar</button>
+        </div>
+        <img id="previewImg" class="preview-img" alt="Pré-visualização da imagem" />
+        <div class="actions">
+          <button id="btnSend" class="btn btn-primary" type="button">Enviar para IA</button>
+        </div>
+      </div>
+
+      <div id="feedbackBox" class="alert hidden" role="status"></div>
+    </section>
+
+    <!-- Resultado -->
+    <section id="resultCard" class="card hidden" aria-live="polite">
+      <h2>Resposta da IA</h2>
+      <div class="result-grid">
+        <div class="metric">
+          <div class="metric-label">Classe</div>
+          <div id="resClasse" class="metric-value">-</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Confiança</div>
+          <div id="resConfianca" class="metric-value">-</div>
+          <div class="confidence-bar">
+            <div id="resConfiancaBar" class="confidence-fill"></div>
+          </div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Ação</div>
+          <div id="resAcao" class="metric-value">-</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Código (y)</div>
+          <div id="resY" class="metric-value">-</div>
+        </div>
+      </div>
+
+      <div>
+        <div class="metric-label" style="margin-bottom: 6px;">JSON completo</div>
+        <pre id="resJson">{}</pre>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const statusDot = document.getElementById("statusDot");
+    const statusText = document.getElementById("statusText");
+    const btnCheckHealth = document.getElementById("btnCheckHealth");
+
+    const tabUpload = document.getElementById("tabUpload");
+    const tabCamera = document.getElementById("tabCamera");
+    const uploadPanel = document.getElementById("uploadPanel");
+    const cameraPanel = document.getElementById("cameraPanel");
+
+    const dropzone = document.getElementById("dropzone");
+    const fileInput = document.getElementById("fileInput");
+
+    const video = document.getElementById("video");
+    const canvas = document.getElementById("canvas");
+    const btnStartCamera = document.getElementById("btnStartCamera");
+    const btnCapture = document.getElementById("btnCapture");
+    const btnStopCamera = document.getElementById("btnStopCamera");
+
+    const previewSection = document.getElementById("previewSection");
+    const previewImg = document.getElementById("previewImg");
+    const previewName = document.getElementById("previewName");
+    const btnClear = document.getElementById("btnClear");
+    const btnSend = document.getElementById("btnSend");
+    const feedbackBox = document.getElementById("feedbackBox");
+
+    const resultCard = document.getElementById("resultCard");
+    const resClasse = document.getElementById("resClasse");
+    const resConfianca = document.getElementById("resConfianca");
+    const resConfiancaBar = document.getElementById("resConfiancaBar");
+    const resAcao = document.getElementById("resAcao");
+    const resY = document.getElementById("resY");
+    const resJson = document.getElementById("resJson");
+
+    let selectedFile = null;
+    let previewObjectUrl = null;
+    let mediaStream = null;
+
+    function showFeedback(message, type = "info") {
+      feedbackBox.textContent = message;
+      feedbackBox.className = `alert alert-${type}`;
+    }
+
+    function hideFeedback() {
+      feedbackBox.className = "alert hidden";
+      feedbackBox.textContent = "";
+    }
+
+    function setSelectedFile(file, label) {
+      if (!file) return;
+      const validTypes = ["image/jpeg", "image/png"];
+      if (!validTypes.includes(file.type)) {
+        showFeedback("Formato não suportado. Envie uma imagem JPEG ou PNG.", "error");
+        return;
+      }
+
+      if (previewObjectUrl) {
+        URL.revokeObjectURL(previewObjectUrl);
+      }
+
+      selectedFile = file;
+      previewObjectUrl = URL.createObjectURL(file);
+      previewImg.src = previewObjectUrl;
+      const sizeKb = (file.size / 1024).toFixed(1);
+      previewName.textContent = `${label || file.name} (${sizeKb} KB)`;
+      previewSection.classList.remove("hidden");
+      resultCard.classList.add("hidden");
+      hideFeedback();
+    }
+
+    function clearSelection() {
+      selectedFile = null;
+      fileInput.value = "";
+      if (previewObjectUrl) {
+        URL.revokeObjectURL(previewObjectUrl);
+        previewObjectUrl = null;
+      }
+      previewImg.removeAttribute("src");
+      previewSection.classList.add("hidden");
+      resultCard.classList.add("hidden");
+      hideFeedback();
+    }
+
+    // --- Status da API (/api/health) ---
+    async function checkHealth() {
+      statusDot.className = "dot loading";
+      statusText.textContent = "Verificando serviço...";
+      btnCheckHealth.disabled = true;
+
+      try {
+        const response = await fetch("/api/health");
+        const data = await response.json();
+
+        if (response.ok && data.modelo_carregado !== false) {
+          statusDot.className = "dot online";
+          statusText.textContent = "Serviço online";
+        } else {
+          statusDot.className = "dot offline";
+          statusText.textContent = "Modelo indisponível";
+        }
+      } catch {
+        statusDot.className = "dot offline";
+        statusText.textContent = "Serviço offline";
+      } finally {
+        btnCheckHealth.disabled = false;
+      }
+    }
+
+    btnCheckHealth.addEventListener("click", checkHealth);
+
+    // --- Alternar abas ---
+    function switchTab(mode) {
+      const isUpload = mode === "upload";
+      tabUpload.classList.toggle("active", isUpload);
+      tabCamera.classList.toggle("active", !isUpload);
+      tabUpload.setAttribute("aria-selected", String(isUpload));
+      tabCamera.setAttribute("aria-selected", String(!isUpload));
+      uploadPanel.classList.toggle("hidden", !isUpload);
+      cameraPanel.classList.toggle("hidden", isUpload);
+
+      if (isUpload) {
+        stopCamera();
+      }
+      hideFeedback();
+    }
+
+    tabUpload.addEventListener("click", () => switchTab("upload"));
+    tabCamera.addEventListener("click", () => switchTab("camera"));
+
+    // --- Upload / Drag and Drop ---
+    dropzone.addEventListener("click", () => fileInput.click());
+    dropzone.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        fileInput.click();
+      }
+    });
+
+    fileInput.addEventListener("change", () => {
+      if (fileInput.files && fileInput.files[0]) {
+        setSelectedFile(fileInput.files[0]);
+      }
+    });
+
+    dropzone.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      dropzone.classList.add("dragover");
+    });
+
+    dropzone.addEventListener("dragleave", () => {
+      dropzone.classList.remove("dragover");
+    });
+
+    dropzone.addEventListener("drop", (e) => {
+      e.preventDefault();
+      dropzone.classList.remove("dragover");
+      if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+        setSelectedFile(e.dataTransfer.files[0]);
+      }
+    });
+
+    // --- Câmera ---
+    async function startCamera() {
+      hideFeedback();
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        showFeedback("Seu navegador não suporta acesso à câmera neste endereço. Use http://localhost ou HTTPS.", "error");
+        return;
+      }
+
+      try {
+        try {
+          mediaStream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: { ideal: "environment" } },
+            audio: false,
+          });
+        } catch {
+          mediaStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        }
+
+        video.srcObject = mediaStream;
+        video.classList.remove("hidden");
+        btnStartCamera.classList.add("hidden");
+        btnCapture.classList.remove("hidden");
+        btnStopCamera.classList.remove("hidden");
+      } catch (err) {
+        showFeedback("Não foi possível acessar a câmera. Verifique as permissões do navegador.", "error");
+      }
+    }
+
+    function stopCamera() {
+      if (mediaStream) {
+        mediaStream.getTracks().forEach((track) => track.stop());
+        mediaStream = null;
+      }
+      video.srcObject = null;
+      video.classList.add("hidden");
+      btnStartCamera.classList.remove("hidden");
+      btnCapture.classList.add("hidden");
+      btnStopCamera.classList.add("hidden");
+    }
+
+    function capturePhoto() {
+      if (!mediaStream || !video.videoWidth || !video.videoHeight) {
+        showFeedback("Aguarde a câmera carregar antes de capturar.", "error");
+        return;
+      }
+
+      const maxDim = 640;
+      const scale = Math.min(1, maxDim / Math.max(video.videoWidth, video.videoHeight));
+      canvas.width = Math.round(video.videoWidth * scale);
+      canvas.height = Math.round(video.videoHeight * scale);
+
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) {
+            showFeedback("Falha ao capturar a imagem da câmera.", "error");
+            return;
+          }
+          const capturedFile = new File([blob], "captura.jpg", { type: "image/jpeg" });
+          setSelectedFile(capturedFile, "captura.jpg");
+          stopCamera();
+        },
+        "image/jpeg",
+        0.9
+      );
+    }
+
+    btnStartCamera.addEventListener("click", startCamera);
+    btnCapture.addEventListener("click", capturePhoto);
+    btnStopCamera.addEventListener("click", stopCamera);
+    btnClear.addEventListener("click", clearSelection);
+
+    // --- Envio para a IA (/api/predict) ---
+    function formatClasse(classe) {
+      if (classe === "piramide") return { label: "Pirâmide", badge: "badge-piramide" };
+      if (classe === "cubo") return { label: "Cubo", badge: "badge-cubo" };
+      return { label: "Não reconhecido", badge: "badge-unknown" };
+    }
+
+    function renderResult(data) {
+      const info = formatClasse(data.classe);
+      resClasse.innerHTML = `<span class="badge ${info.badge}">${info.label}</span>`;
+
+      const pct = typeof data.confianca === "number" ? Math.max(0, Math.min(100, data.confianca * 100)) : 0;
+      resConfianca.textContent = typeof data.confianca === "number" ? `${pct.toFixed(2)}%` : "-";
+      resConfiancaBar.style.width = `${pct}%`;
+
+      resAcao.textContent = data.acao ?? "-";
+      resY.textContent = data.y !== undefined ? String(data.y) : "-";
+      resJson.textContent = JSON.stringify(data, null, 2);
+
+      resultCard.classList.remove("hidden");
+    }
+
+    async function sendImage() {
+      if (!selectedFile) {
+        showFeedback("Selecione ou tire uma foto antes de enviar.", "error");
+        return;
+      }
+
+      btnSend.disabled = true;
+      btnClear.disabled = true;
+      resultCard.classList.add("hidden");
+      showFeedback("Enviando imagem para a IA... (se o servidor estava em hibernação, pode levar até ~50s)", "info");
+
+      try {
+        const formData = new FormData();
+        formData.append("file", selectedFile, selectedFile.name || "imagem.jpg");
+
+        const response = await fetch("/api/predict", {
+          method: "POST",
+          body: formData,
+        });
+
+        const data = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+          const msg =
+            data.erro ||
+            data.detail ||
+            (response.status === 400 && "Arquivo vazio ou imagem inválida.") ||
+            (response.status === 422 && "Campo de imagem inválido.") ||
+            (response.status === 503 && "O modelo ainda não está carregado no servidor.") ||
+            `Erro na requisição (HTTP ${response.status}).`;
+          showFeedback(msg, "error");
+          return;
+        }
+
+        hideFeedback();
+        renderResult(data);
+        statusDot.className = "dot online";
+        statusText.textContent = "Serviço online";
+      } catch {
+        showFeedback("Erro de conexão com o servidor local. Verifique se o servidor está em execução.", "error");
+      } finally {
+        btnSend.disabled = false;
+        btnClear.disabled = false;
+      }
+    }
+
+    btnSend.addEventListener("click", sendImage);
+
+    // Verifica saúde da API ao abrir a página
+    checkHealth();
+  </script>
+</body>
+</html>

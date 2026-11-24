@@ -1,0 +1,12 @@
+{
+  "name": "classificador-imagens-ia-web",
+  "version": "1.0.0",
+  "description": "Aplicação web simples em HTML com proxy seguro (.env) para classificação de imagens via IA.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
